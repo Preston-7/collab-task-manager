@@ -2,9 +2,7 @@ package com.taskmanager.server.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import lombok.Data;
 
-@Data
 @Entity
 public class Task {
 
@@ -13,14 +11,31 @@ public class Task {
     private Long id;
 
     private String title;
+
     private String description;
+
     private boolean completed;
 
     private LocalDateTime createdAt;
+
     private LocalDateTime dueDate;
 
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    // Constructors
     public Task() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    // Getters and setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getTitle() {
@@ -47,6 +62,14 @@ public class Task {
         this.completed = completed;
     }
 
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
     public LocalDateTime getDueDate() {
         return dueDate;
     }
@@ -55,4 +78,11 @@ public class Task {
         this.dueDate = dueDate;
     }
 
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
 }
