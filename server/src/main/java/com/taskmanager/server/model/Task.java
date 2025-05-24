@@ -2,6 +2,9 @@ package com.taskmanager.server.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 
 @Entity
 public class Task {
@@ -16,20 +19,17 @@ public class Task {
 
     private boolean completed;
 
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     private LocalDateTime dueDate;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
+    @JsonBackReference
     private User user;
 
-    // Constructors
-    public Task() {
-        this.createdAt = LocalDateTime.now();
-    }
+    // Getters and Setters
 
-    // Getters and setters
     public Long getId() {
         return id;
     }
