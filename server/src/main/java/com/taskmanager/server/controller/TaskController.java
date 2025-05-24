@@ -49,13 +49,15 @@ public class TaskController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Task> updateTask(@PathVariable Long id, @RequestBody Task taskDetails, Authentication authentication) {
+        String username = authentication.getName();
         Optional<Task> optionalTask = taskRepository.findById(id);
+
         if (optionalTask.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
         Task task = optionalTask.get();
-        if (!task.getUser().getUsername().equals(authentication.getName())) {
+        if (!task.getUser().getUsername().equals(username)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -67,6 +69,7 @@ public class TaskController {
         Task updatedTask = taskRepository.save(task);
         return ResponseEntity.ok(updatedTask);
     }
+
 
 
     @DeleteMapping("/{id}")
