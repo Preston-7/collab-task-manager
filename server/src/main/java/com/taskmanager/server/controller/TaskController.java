@@ -9,6 +9,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.http.HttpStatus;
+
 
 import java.util.List;
 import java.util.Optional;
@@ -27,9 +30,11 @@ public class TaskController {
     }
 
     @GetMapping
-    public List<Task> getAllTasks(@AuthenticationPrincipal UserDetails userDetails) {
-        return taskRepository.findByUserUsername(userDetails.getUsername());
+    public List<Task> getAllTasks(Authentication authentication) {
+        String username = authentication.getName();
+        return taskRepository.findByUserUsername(username);
     }
+
 
     @PostMapping
     public ResponseEntity<Task> createTask(@RequestBody Task task, @AuthenticationPrincipal UserDetails userDetails) {
@@ -43,27 +48,41 @@ public class TaskController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Task> updateTask(@PathVariable Long id, @RequestBody Task taskDetails, @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<Task> updateTask(@PathVariable Long id, @RequestBody Task taskDetails, Authentication authentication) {
         Optional<Task> optionalTask = taskRepository.findById(id);
-        if (optionalTask.isEmpty() || !optionalTask.get().getUser().getUsername().equals(userDetails.getUsername())) {
+        if (optionalTask.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+
         Task task = optionalTask.get();
+        if (!task.getUser().getUsername().equals(authentication.getName())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
         task.setTitle(taskDetails.getTitle());
         task.setDescription(taskDetails.getDescription());
         task.setCompleted(taskDetails.isCompleted());
         task.setDueDate(taskDetails.getDueDate());
+
         Task updatedTask = taskRepository.save(task);
         return ResponseEntity.ok(updatedTask);
     }
 
+
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTask(@PathVariable Long id, @AuthenticationPrincipal UserDetails userDetails) {
-        Optional<Task> task = taskRepository.findById(id);
-        if (task.isEmpty() || !task.get().getUser().getUsername().equals(userDetails.getUsername())) {
+    public ResponseEntity<Void> deleteTask(@PathVariable Long id, Authentication authentication) {
+        Optional<Task> optionalTask = taskRepository.findById(id);
+        if (optionalTask.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+
+        Task task = optionalTask.get();
+        if (!task.getUser().getUsername().equals(authentication.getName())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
         taskRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
+
 }
