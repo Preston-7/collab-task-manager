@@ -1,26 +1,22 @@
-package com.taskmanager.server.controller;
+package com.taskmanager.server.service;
 
-import com.taskmanager.server.model.User;
 import com.taskmanager.server.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.stream.Collectors;
 
-@RestController
-public class TaskFilteringController {
+@Service
+public class TaskReminderService {
 
     private final UserRepository userRepository;
 
     @Autowired
-    public TaskFilteringController(UserRepository userRepository) {
+    public TaskReminderService(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 
-    // Check reminders every 1 minute
-    @Scheduled(fixedRate = 60000)
     public void checkUpcomingTaskReminders() {
         var now = LocalDateTime.now();
         var upcoming = now.plusMinutes(10);
@@ -30,7 +26,7 @@ public class TaskFilteringController {
                     .filter(task -> task.getReminderTime() != null)
                     .filter(task -> !task.isCompleted())
                     .filter(task -> task.getReminderTime().isAfter(now) && task.getReminderTime().isBefore(upcoming))
-                    .collect(Collectors.toList());
+                    .toList();
 
             if (!dueSoon.isEmpty()) {
                 System.out.println("[Reminder] User: " + user.getUsername() + " has " + dueSoon.size() + " task(s) due soon.");

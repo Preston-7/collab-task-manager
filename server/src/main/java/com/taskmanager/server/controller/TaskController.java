@@ -4,88 +4,113 @@ import com.taskmanager.server.model.Task;
 import com.taskmanager.server.model.User;
 import com.taskmanager.server.repository.TaskRepository;
 import com.taskmanager.server.repository.UserRepository;
+import com.taskmanager.server.service.TaskReminderService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.security.core.Authentication;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.scheduling.annotation.Scheduled;
 
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/tasks")
 public class TaskController {
 
-    private final TaskRepository taskRepository;
-    private final UserRepository userRepository;
+    @Autowired
+    private TaskRepository taskRepository;
 
     @Autowired
-    public TaskController(TaskRepository taskRepository, UserRepository userRepository) {
-        this.taskRepository = taskRepository;
-        this.userRepository = userRepository;
-    }
+    private UserRepository userRepository;
+
+    @Autowired
+    private TaskReminderService taskReminderService;
 
     @GetMapping
-    public List<Task> getAllTasks(Authentication authentication) {
+    public List<Task> getTasksForCurrentUser(Authentication authentication,
+                                             @RequestParam(required = false) Boolean completed,
+                                             @RequestParam(required = false) String label,
+                                             @RequestParam(required = false) String priority,
+                                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dueBefore,
+                                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dueAfter,
+                                             @RequestParam(defaultValue = "0") int page,
+                                             @RequestParam(defaultValue = "20") int size) {
+
         String username = authentication.getName();
-        return taskRepository.findByUserUsername(username);
+        List<Task> tasks = taskRepository.findByUserUsername(username);
+
+        return tasks.stream()
+                .filter(task -> completed == null || task.isCompleted() == completed)
+                .filter(task -> label == null || label.equalsIgnoreCase(task.getLabel()))
+                .filter(task -> priority == null || priority.equalsIgnoreCase(task.getPriority()))
+                .filter(task -> dueBefore == null || task.getDueDate() != null && task.getDueDate().isBefore(dueBefore))
+                .filter(task -> dueAfter == null || task.getDueDate() != null && task.getDueDate().isAfter(dueAfter))
+                .skip((long) page * size)
+                .limit(size)
+                .collect(Collectors.toList());
     }
 
-
     @PostMapping
-    public ResponseEntity<Task> createTask(@RequestBody Task task, @AuthenticationPrincipal UserDetails userDetails) {
-        Optional<User> user = userRepository.findByUsername(userDetails.getUsername());
-        if (user.isEmpty()) {
-            return ResponseEntity.badRequest().build();
+    public Task createTask(@RequestBody Task task, Authentication authentication) {
+        String username = authentication.getName();
+        User user = userRepository.findByUsername(username).orElseThrow();
+        task.setUser(user);
+
+        if (task.getSubtasks() != null) {
+            task.getSubtasks().forEach(subtask -> subtask.setUser(user));
         }
-        task.setUser(user.get());
-        Task savedTask = taskRepository.save(task);
-        return ResponseEntity.ok(savedTask);
+
+        return taskRepository.save(task);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Task> updateTask(@PathVariable Long id, @RequestBody Task taskDetails, Authentication authentication) {
+    public ResponseEntity<Task> updateTask(@PathVariable Long id, @RequestBody Task updatedTask, Authentication authentication) {
         String username = authentication.getName();
-        Optional<Task> optionalTask = taskRepository.findById(id);
+        Optional<Task> existingOpt = taskRepository.findById(id);
 
-        if (optionalTask.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        if (existingOpt.isEmpty() || !existingOpt.get().getUser().getUsername().equals(username)) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
 
-        Task task = optionalTask.get();
-        if (!task.getUser().getUsername().equals(username)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        Task task = existingOpt.get();
+        task.setTitle(updatedTask.getTitle());
+        task.setDescription(updatedTask.getDescription());
+        task.setCompleted(updatedTask.isCompleted());
+        task.setDueDate(updatedTask.getDueDate());
+        task.setLabel(updatedTask.getLabel());
+        task.setPriority(updatedTask.getPriority());
+        task.setReminderTime(updatedTask.getReminderTime());
+
+        if (updatedTask.getSubtasks() != null) {
+            updatedTask.getSubtasks().forEach(subtask -> subtask.setUser(task.getUser()));
         }
+        task.setSubtasks(updatedTask.getSubtasks());
 
-        task.setTitle(taskDetails.getTitle());
-        task.setDescription(taskDetails.getDescription());
-        task.setCompleted(taskDetails.isCompleted());
-        task.setDueDate(taskDetails.getDueDate());
-
-        Task updatedTask = taskRepository.save(task);
-        return ResponseEntity.ok(updatedTask);
+        return new ResponseEntity<>(taskRepository.save(task), HttpStatus.OK);
     }
-
-
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTask(@PathVariable Long id, Authentication authentication) {
-        Optional<Task> optionalTask = taskRepository.findById(id);
-        if (optionalTask.isEmpty()) {
-            return ResponseEntity.notFound().build();
+        String username = authentication.getName();
+        Optional<Task> taskOpt = taskRepository.findById(id);
+
+        if (taskOpt.isEmpty() || !taskOpt.get().getUser().getUsername().equals(username)) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
 
-        Task task = optionalTask.get();
-        if (!task.getUser().getUsername().equals(authentication.getName())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
-        taskRepository.deleteById(id);
-        return ResponseEntity.noContent().build();
+        taskRepository.delete(taskOpt.get());
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
+    // Delegate scheduled task reminder to service
+    @Scheduled(fixedRate = 60000)
+    public void runReminderCheck() {
+        taskReminderService.checkUpcomingTaskReminders();
+    }
 }

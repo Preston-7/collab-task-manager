@@ -1,5 +1,7 @@
 package com.taskmanager.server.repository;
-
+import java.time.LocalDateTime;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import com.taskmanager.server.model.Task;
 import org.springframework.data.jpa.repository.JpaRepository;
 

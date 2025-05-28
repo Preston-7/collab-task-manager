@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import java.util.List;
+
 
 
 @Entity
@@ -27,6 +29,21 @@ public class Task {
     @JoinColumn(name = "user_id")
     @JsonBackReference
     private User user;
+
+    @Column
+    private String label;
+
+    @Column
+    private String priority;
+
+    @OneToMany(cascade = CascadeType.ALL)
+    @JoinColumn(name = "parent_task_id")  // Self-referencing FK
+    private List<Task> subtasks;
+
+
+    @Column
+    private LocalDateTime reminderTime;
+
 
     // Getters and Setters
 
@@ -85,4 +102,37 @@ public class Task {
     public void setUser(User user) {
         this.user = user;
     }
+
+    public String getLabel() {
+        return label;
+    }
+
+    public void setLabel(String label) {
+        this.label = label;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
+    }
+
+    public List<Task> getSubtasks() {
+        return subtasks;
+    }
+
+    public void setSubtasks(List<Task> subtasks) {
+        this.subtasks = subtasks;
+    }
+
+    public LocalDateTime getReminderTime() {
+        return reminderTime;
+    }
+
+    public void setReminderTime(LocalDateTime reminderTime) {
+        this.reminderTime = reminderTime;
+    }
+
 }
