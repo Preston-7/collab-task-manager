@@ -44,8 +44,19 @@ public class Task {
     @Column
     private LocalDateTime reminderTime;
 
+    @Lob
+    @Column(name = "attachment_data")
+    private byte[] attachmentData;
+
+    @Column(name = "attachment_name")
+    private String attachmentName;
+
+
 
     // Getters and Setters
+
+
+
 
     public Long getId() {
         return id;
@@ -133,6 +144,22 @@ public class Task {
 
     public void setReminderTime(LocalDateTime reminderTime) {
         this.reminderTime = reminderTime;
+    }
+
+    public byte[] getAttachmentData() {
+        return attachmentData;
+    }
+
+    public void setAttachmentData(byte[] attachmentData) {
+        this.attachmentData = attachmentData;
+    }
+
+    public String getAttachmentName() {
+        return attachmentName;
+    }
+
+    public void setAttachmentName(String attachmentName) {
+        this.attachmentName = attachmentName;
     }
 
 }

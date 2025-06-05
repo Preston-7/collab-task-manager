@@ -12,8 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.scheduling.annotation.Scheduled;
-
-
+import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -94,6 +93,27 @@ public class TaskController {
 
         return new ResponseEntity<>(taskRepository.save(task), HttpStatus.OK);
     }
+
+    @PostMapping("/{id}/attachment")
+    public ResponseEntity<String> uploadAttachment(@PathVariable Long id,
+                                                   @RequestParam("file") MultipartFile file,
+                                                   Authentication authentication) {
+        String username = authentication.getName();
+        Optional<Task> taskOpt = taskRepository.findById(id);
+
+        if (taskOpt.isEmpty() || !taskOpt.get().getUser().getUsername().equals(username)) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        // Simulate attachment handling
+        try {
+            String fileInfo = String.format("Received file '%s' (%d bytes)", file.getOriginalFilename(), file.getSize());
+            return ResponseEntity.ok(fileInfo);
+        } catch (Exception e) {
+            return new ResponseEntity<>("Failed to process file.", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTask(@PathVariable Long id, Authentication authentication) {
