@@ -162,4 +162,16 @@ public class Task {
         this.attachmentName = attachmentName;
     }
 
+    @Column
+    private boolean reminderSent = false;
+
+    public boolean isReminderSent() {
+        return reminderSent;
+    }
+
+    public void setReminderSent(boolean reminderSent) {
+        this.reminderSent = reminderSent;
+    }
+
+
 }

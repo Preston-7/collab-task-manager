@@ -13,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -56,42 +57,18 @@ public class TaskController {
     }
 
     @PostMapping
-    public Task createTask(@RequestBody Task task, Authentication authentication) {
+    public ResponseEntity<Task> createTask(@RequestBody Task task, Authentication authentication) {
         String username = authentication.getName();
         User user = userRepository.findByUsername(username).orElseThrow();
+
         task.setUser(user);
 
         if (task.getSubtasks() != null) {
             task.getSubtasks().forEach(subtask -> subtask.setUser(user));
         }
 
-        return taskRepository.save(task);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Task> updateTask(@PathVariable Long id, @RequestBody Task updatedTask, Authentication authentication) {
-        String username = authentication.getName();
-        Optional<Task> existingOpt = taskRepository.findById(id);
-
-        if (existingOpt.isEmpty() || !existingOpt.get().getUser().getUsername().equals(username)) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-
-        Task task = existingOpt.get();
-        task.setTitle(updatedTask.getTitle());
-        task.setDescription(updatedTask.getDescription());
-        task.setCompleted(updatedTask.isCompleted());
-        task.setDueDate(updatedTask.getDueDate());
-        task.setLabel(updatedTask.getLabel());
-        task.setPriority(updatedTask.getPriority());
-        task.setReminderTime(updatedTask.getReminderTime());
-
-        if (updatedTask.getSubtasks() != null) {
-            updatedTask.getSubtasks().forEach(subtask -> subtask.setUser(task.getUser()));
-        }
-        task.setSubtasks(updatedTask.getSubtasks());
-
-        return new ResponseEntity<>(taskRepository.save(task), HttpStatus.OK);
+        Task savedTask = taskRepository.save(task);
+        return new ResponseEntity<>(savedTask, HttpStatus.CREATED);
     }
 
     @PostMapping("/{id}/attachment")
@@ -105,7 +82,6 @@ public class TaskController {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
 
-        // Simulate attachment handling
         try {
             String fileInfo = String.format("Received file '%s' (%d bytes)", file.getOriginalFilename(), file.getSize());
             return ResponseEntity.ok(fileInfo);
@@ -113,7 +89,6 @@ public class TaskController {
             return new ResponseEntity<>("Failed to process file.", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTask(@PathVariable Long id, Authentication authentication) {
@@ -128,7 +103,6 @@ public class TaskController {
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
-    // Delegate scheduled task reminder to service
     @Scheduled(fixedRate = 60000)
     public void runReminderCheck() {
         taskReminderService.checkUpcomingTaskReminders();
