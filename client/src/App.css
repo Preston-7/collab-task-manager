@@ -40,3 +40,11 @@
 .read-the-docs {
   color: #888;
 }
+
+export default function App() {
+  return (
+    <div className="h-screen bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+      <h1 className="text-4xl text-white font-bold">Tailwind is working!</h1>
+    </div>
+  );
+}
